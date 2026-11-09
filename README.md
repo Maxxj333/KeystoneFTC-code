@@ -30,6 +30,12 @@ flowchart TD
     H -->|"否"| J["直接下发"]
     I --> J
     J --> K["换算成编码器转速 setVelocity"]
+    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+    class A,K start
+    class B,H decision
+    class C,D,E,F,G,I,J process
 ```
 
 几个细节：
@@ -63,6 +69,14 @@ flowchart TD
     J --> K["卡尔曼增益融合到 EKF 的 X Y<br/>偏差小于 0.02 米不动"]
     K --> L["交给底盘控制用"]
     C --> L
+    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+    classDef discard fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
+    class A,L start
+    class B,D,I decision
+    class E,F,G,H,J,K process
+    class C discard
 ```
 
 说一下为什么这么绕：
@@ -100,6 +114,14 @@ flowchart TD
     P["Servo"] --> Q{"当前状态"}
     Q -->|"DEFAULT"| R["0.65 和 0.70"]
     Q -->|"ACTIVE"| S["0.25 和 0.30"]
+    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
+    class A,J,P start
+    class B,F,K,Q decision
+    class C,D,G,I,L,M,N,O,R,S process
+    class E,H stop
 ```
 
 - **Shooter。** 双电机速度 PIDF 控到 145 RPM。准备好"ready"用的是两电机里更慢的那个：到 137 RPM 算就绪，掉到 130 以下才算没就绪，中间这段维持原状态，就是个迟滞，不让转速在临界点附近反复开关。Feeder 只有在 `FEEDING` 且 ready 时才开 0.9，升速没到就只转不喂，料不会提前塞进去。停的时候走 `SPIN_DOWN`，再保持目标转速 0.5 秒才断电；比赛结束和 OpMode 退出用的是立即停，三个电机直接断。
@@ -131,6 +153,14 @@ flowchart TD
     M --> N
     N -->|"否"| H
     N -->|"是"| O["取消未完命令<br/>停底盘 停 Shooter Intake 回位 Servo"]
+    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
+    class A,H start
+    class D,K,N decision
+    class B,C,E,F,G,I,J,L process
+    class M,O stop
 ```
 
 命令树四种组合，语义很直白：
@@ -178,6 +208,14 @@ flowchart TD
     L --> N["Limelight 只做翻转判断和遥测显示<br/>不直接改底盘控制"]
     M --> N
     N --> B
+    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
+    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
+    class A,B start
+    class D,H,K decision
+    class C,E,F,G,I,L,N process
+    class J,M stop
 ```
 
 按键对照（Gamepad 1）：
