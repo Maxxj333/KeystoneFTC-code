@@ -5,8 +5,6 @@
 FTC 队伍 **#37502**（北京市鼎石学校高中部 / Keystone Academy）机器人源代码。
 FTC Team **#37502** (Keystone Academy, Beijing) robot source code.
 
-> 本仓库只做目录整理和文档补充，`teamcode/` 下的 Java 源码与路径文件与机器人上的版本逐字节一致，未做任何代码修改。
-> This repository only reorganizes the folder layout and adds documentation. The Java sources and path files under `teamcode/` are byte-for-byte identical to the robot version; no code was changed.
 
 ---
 
