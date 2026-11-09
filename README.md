@@ -6,6 +6,16 @@ FTC 队伍 **#37502**（北京市鼎石学校高中部）机器人代码。
 
 参数都集中在 `teamcode/config/RobotConfig.java`，改参数只改那一个文件。
 
+**流程图颜色说明**（五张图统一）：
+
+- 🟦 蓝色 — 入口、输入、启动
+- 🟨 黄色 — 判断、分支
+- 🟩 绿色 — 底盘共用执行、正常输出
+- 🟪 紫色 — 自主命令、视觉与定位融合
+- 🟧 橙色 — Shooter 等机构动作
+- 🟩 青色 — 摇杆输入等遥控输入、Intake、遥测显示
+- 🟥 红色 — 丢弃、停车、停止
+
 ---
 
 ## 1. 底盘
@@ -18,24 +28,28 @@ FTC 队伍 **#37502**（北京市鼎石学校高中部）机器人代码。
 
 ```mermaid
 flowchart TD
-    A["目标速度进入底盘"] --> B{"从哪来"}
-    B -->|"自主"| C["轨迹目标位姿减 EKF 位姿<br/>姿态误差转到车体方向"]
-    C --> D["P 修正加轨迹速度前馈"]
-    B -->|"遥控"| E["左摇杆平移 右摇杆旋转<br/>场地中心时按当前朝向旋转"]
-    E --> F["加速度斜率限制"]
-    D --> G["麦克纳姆逆运动学<br/>K 等于半轴距加半轮距"]
+    A["目标速度"] --> B{"来源?"}
+    B -->|"自主"| C["位姿误差<br/>转到车体"]
+    C --> D["P修正<br/>加前馈"]
+    B -->|"遥控"| E["摇杆输入<br/>场地旋转"]
+    E --> F["斜率限制"]
+    D --> G["逆运动学<br/>K=0.365"]
     F --> G
-    G --> H{"最大轮速超 1.2 米每秒"}
-    H -->|"是"| I["四轮等比例缩放"]
+    G --> H{"超速?"}
+    H -->|"是"| I["等比缩放"]
     H -->|"否"| J["直接下发"]
     I --> J
-    J --> K["换算成编码器转速 setVelocity"]
-    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
-    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
-    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
-    class A,K start
-    class B,H decision
-    class C,D,E,F,G,I,J process
+    J --> K["转速<br/>setVelocity"]
+    classDef blue fill:#DBEAFE,stroke:#2563EB,stroke-width:1.5px,color:#1E3A5F
+    classDef yellow fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef green fill:#DCFCE7,stroke:#16A34A,stroke-width:1.2px,color:#14532D
+    classDef purple fill:#EDE9FE,stroke:#7C3AED,stroke-width:1.2px,color:#4C1D95
+    classDef cyan fill:#CFFAFE,stroke:#0891B2,stroke-width:1.2px,color:#164E63
+    class A blue
+    class B,H yellow
+    class C,D purple
+    class E,F cyan
+    class G,I,J,K green
 ```
 
 几个细节：
@@ -55,28 +69,30 @@ Limelight 这一帧先过几道门，任何一道不过整帧丢掉，只靠里�
 
 ```mermaid
 flowchart TD
-    A["每帧读 Limelight 最新结果"] --> B{"结果有效吗"}
-    B -->|"否"| C["丢弃这一帧<br/>只用里程计预测"]
-    B -->|"是"| D{"标签数至少 2 个<br/>且数据不超 300 毫秒"}
+    A["读最新帧"] --> B{"有效?"}
+    B -->|"否"| C["丢帧<br/>里程计顶"]
+    B -->|"是"| D{"标签够数?<br/>不过期?"}
     D -->|"否"| C
-    D -->|"是"| E["解 Hive 倾角 phi<br/>超 35 度或俯仰误差超 8 度则丢弃"]
-    E --> F["按倾角修正 X 并换算到轨迹坐标系"]
-    F --> G["算两个候选 Y<br/>原值 和 场地长减原值"]
-    G --> H["和参考位置比距离打分<br/>轨迹目标 EKF 上次接受位置"]
-    H --> I{"另一候选是否至少赢 0.10 米"}
-    I -->|"否 保持上一选择"| J["EMA 平滑 alpha 0.3"]
-    I -->|"是 切换"| J
-    J --> K["卡尔曼增益融合到 EKF 的 X Y<br/>偏差小于 0.02 米不动"]
-    K --> L["交给底盘控制用"]
+    D -->|"是"| E["解倾角<br/>翻转校验"]
+    E --> F["倾角修正<br/>换坐标"]
+    F --> G["两个候选Y<br/>原值/镜像"]
+    G --> H["比参考<br/>打分"]
+    H --> I{"赢过0.10m?"}
+    I -->|"否"| J["EMA平滑"]
+    I -->|"是"| J
+    J --> K["融合EKF<br/>死区0.02"]
+    K --> L["给底盘"]
     C --> L
-    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
-    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
-    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
-    classDef discard fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
-    class A,L start
-    class B,D,I decision
-    class E,F,G,H,J,K process
-    class C discard
+    classDef blue fill:#DBEAFE,stroke:#2563EB,stroke-width:1.5px,color:#1E3A5F
+    classDef yellow fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef green fill:#DCFCE7,stroke:#16A34A,stroke-width:1.2px,color:#14532D
+    classDef purple fill:#EDE9FE,stroke:#7C3AED,stroke-width:1.2px,color:#4C1D95
+    classDef red fill:#FEE2E2,stroke:#DC2626,stroke-width:1.2px,color:#7F1D1D
+    class A blue
+    class B,D,I yellow
+    class C red
+    class E,F,G,H,J,K purple
+    class L green
 ```
 
 说一下为什么这么绕：
@@ -96,32 +112,36 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["外部请求"] --> B{"请求类型"}
-    B -->|"升速"| C["SPINNING<br/>双电机到 145 RPM"]
+    A["请求"] --> B{"类型?"}
+    B -->|"升速"| C["SPINNING<br/>145 RPM"]
     B -->|"送料"| D["FEEDING"]
-    B -->|"停止"| E["SPIN_DOWN 保持 0.5 秒后 IDLE"]
-    C --> F{"两电机取小转速<br/>是否到 137 RPM"}
+    B -->|"停止"| E["降速<br/>0.5秒停"]
+    C --> F{"慢电机<br/>到137?"}
     D --> F
-    F -->|"到了"| G["ready 为真<br/>FEEDING 时 Feeder 才开"]
-    F -->|"掉到 130 以下"| H["ready 变假 Feeder 关"]
-    G --> I["继续 FEEDING"]
+    F -->|"到"| G["ready<br/>开Feeder"]
+    F -->|"掉下130"| H["关Feeder"]
+    G --> I["继续送料"]
     H --> C
-    J["Intake"] --> K{"谁在驱动"}
-    K -->|"自主固定时长"| L["按给定功率开 到时关"]
-    K -->|"自主一直开"| M["开着不结束<br/>等父命令取消"]
-    K -->|"遥控"| N["按住斜坡升到 0.9<br/>松开斜坡降到 0"]
-    K -->|"送料中且已就绪"| O["强制 0.8 压过按键"]
-    P["Servo"] --> Q{"当前状态"}
-    Q -->|"DEFAULT"| R["0.65 和 0.70"]
-    Q -->|"ACTIVE"| S["0.25 和 0.30"]
-    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
-    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
-    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
-    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
-    class A,J,P start
-    class B,F,K,Q decision
-    class C,D,G,I,L,M,N,O,R,S process
-    class E,H stop
+    J["Intake"] --> K{"驱动?"}
+    K -->|"定时"| L["定时开"]
+    K -->|"一直开"| M["等取消"]
+    K -->|"遥控"| N["斜坡0-0.9"]
+    K -->|"协助"| O["强制0.8"]
+    P["Servo"] --> Q{"状态?"}
+    Q -->|"默认"| R["DEFAULT"]
+    Q -->|"动作"| S["ACTIVE"]
+    classDef blue fill:#DBEAFE,stroke:#2563EB,stroke-width:1.5px,color:#1E3A5F
+    classDef yellow fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef orange fill:#FFEDD5,stroke:#EA580C,stroke-width:1.2px,color:#7C2D12
+    classDef cyan fill:#CFFAFE,stroke:#0891B2,stroke-width:1.2px,color:#164E63
+    classDef pink fill:#FCE7F3,stroke:#DB2777,stroke-width:1.2px,color:#831843
+    classDef red fill:#FEE2E2,stroke:#DC2626,stroke-width:1.2px,color:#7F1D1D
+    class A,J,P blue
+    class B,F,K,Q yellow
+    class C,D,G,I orange
+    class E,H red
+    class L,M,N,O cyan
+    class R,S pink
 ```
 
 - **Shooter。** 双电机速度 PIDF 控到 145 RPM。准备好"ready"用的是两电机里更慢的那个：到 137 RPM 算就绪，掉到 130 以下才算没就绪，中间这段维持原状态，就是个迟滞，不让转速在临界点附近反复开关。Feeder 只有在 `FEEDING` 且 ready 时才开 0.9，升速没到就只转不喂，料不会提前塞进去。停的时候走 `SPIN_DOWN`，再保持目标转速 0.5 秒才断电；比赛结束和 OpMode 退出用的是立即停，三个电机直接断。
@@ -136,41 +156,41 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["初始化硬件"] --> B["扫描 teamcode 子目录<br/>找 events 或 path 批次"]
-    B --> C["默认选 RED_2<br/>D-pad 切换 按 START 开始"]
-    C --> D{"有 events.txt"}
-    D -->|"有"| E["按缩进解析成命令树<br/>缩进错或未知命令直接报错停"]
-    D -->|"无"| F["所有 path 按顺序串起来"]
-    E --> G["找第一段 PATH 的起点<br/>定为 EKF 初始位姿"]
+    A["初始化"] --> B["扫批次<br/>events/path"]
+    B --> C["默认RED_2<br/>D-pad选"]
+    C --> D{"有events?"}
+    D -->|"有"| E["解析命令树<br/>错则停"]
+    D -->|"无"| F["path顺序串"]
+    E --> G["首PATH起点<br/>EKF初值"]
     F --> G
     G --> H["主循环"]
-    H --> I["EKF 预测 加 视觉更新"]
-    I --> J["执行当前命令<br/>PATH 每帧交目标位姿"]
-    J --> K{"这一帧有路径目标"}
-    K -->|"有"| L["底盘跟踪控制"]
-    K -->|"无"| M["底盘停车 机构命令照常"]
-    L --> N{"命令树结束或 OpMode 结束"}
+    H --> I["预测<br/>加视觉"]
+    I --> J["执行命令<br/>PATH给目标"]
+    J --> K{"有目标?"}
+    K -->|"有"| L["跟踪底盘"]
+    K -->|"无"| M["停车<br/>机构照常"]
+    L --> N{"结束?"}
     M --> N
     N -->|"否"| H
-    N -->|"是"| O["取消未完命令<br/>停底盘 停 Shooter Intake 回位 Servo"]
-    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
-    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
-    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
-    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
-    class A,H start
-    class D,K,N decision
-    class B,C,E,F,G,I,J,L process
-    class M,O stop
+    N -->|"是"| O["收尾<br/>全停回位"]
+    classDef blue fill:#DBEAFE,stroke:#2563EB,stroke-width:1.5px,color:#1E3A5F
+    classDef yellow fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef green fill:#DCFCE7,stroke:#16A34A,stroke-width:1.2px,color:#14532D
+    classDef purple fill:#EDE9FE,stroke:#7C3AED,stroke-width:1.2px,color:#4C1D95
+    classDef red fill:#FEE2E2,stroke:#DC2626,stroke-width:1.2px,color:#7F1D1D
+    class A,H blue
+    class D,K,N yellow
+    class B,C,E,F,G purple
+    class I,J,L green
+    class M,O red
 ```
 
 命令树四种组合，语义很直白：
 
-| 关键字 | 意思 |
-|---|---|
-| `SEQ` | 一个接一个，前一个结束才启动下一个 |
-| `PAR` | 几个一起跑，全部结束才算完 |
-| `RACE` | 几个一起跑，先结束的赢，其余取消。`INTAKE`（一直开）就是靠这个收尾的 |
-| `IF_VISION` | 见下面 |
+- **`SEQ`** — 一个接一个，前一个结束才启动下一个
+- **`PAR`** — 几个一起跑，全部结束才算完
+- **`RACE`** — 几个一起跑，先结束的赢，其余取消。`INTAKE`（一直开）就是靠这个收尾的
+- **`IF_VISION`** — 见下面
 
 叶子命令：`PATH` 跟轨迹，`WAIT` 等，`SHOOT` 射击，`INTAKE` 进料，`SERVO_ACTIVE / SERVO_DEFAULT` 切舵机。
 
@@ -192,42 +212,51 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["初始化 等待 START"] --> B["主循环 每帧算 dt"]
-    B --> C["编码器累纯里程计 odoY"]
-    C --> D{"按 X 或 Y 切换<br/>场地中心或机器人中心"}
-    D --> E["左摇杆 右摇杆换算目标速度"]
-    E --> F["加速度斜率限制 逆运动学 限幅"]
-    F --> G["A 切 Servo ACTIVE<br/>B 切回 DEFAULT"]
-    G --> H{"右扳机大于 0.1"}
-    H -->|"是"| I["Shooter 请求送料<br/>转速到了才开 Feeder"]
-    H -->|"否"| J["Shooter 请求停止"]
-    I --> K{"右保险杠 或 送料中且已就绪"}
+    A["初始化<br/>等START"] --> B["主循环"]
+    B --> C["累odoY"]
+    C --> D{"X/Y切换<br/>中心模式"}
+    D --> E["摇杆<br/>换算"]
+    E --> F["限斜率<br/>逆运动学"]
+    F --> G["A/B切Servo"]
+    G --> H{"RT>0.1?"}
+    H -->|"是"| I["请求送料<br/>就绪才喂"]
+    H -->|"否"| J["请求停止"]
+    I --> K{"RB或协助?"}
     J --> K
-    K -->|"是"| L["Intake 升到 0.9<br/>送料协助时固定 0.8"]
-    K -->|"否"| M["Intake 降到 0"]
-    L --> N["Limelight 只做翻转判断和遥测显示<br/>不直接改底盘控制"]
+    K -->|"是"| L["Intake升<br/>协助0.8"]
+    K -->|"否"| M["Intake降"]
+    L --> N["视觉仅遥测"]
     M --> N
     N --> B
-    classDef start fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a5f
-    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
-    classDef process fill:#dcfce7,stroke:#16a34a,stroke-width:1.2px,color:#14532d
-    classDef stop fill:#fee2e2,stroke:#dc2626,stroke-width:1.2px,color:#7f1d1d
-    class A,B start
-    class D,H,K decision
-    class C,E,F,G,I,L,N process
-    class J,M stop
+    classDef blue fill:#DBEAFE,stroke:#2563EB,stroke-width:1.5px,color:#1E3A5F
+    classDef yellow fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F
+    classDef green fill:#DCFCE7,stroke:#16A34A,stroke-width:1.2px,color:#14532D
+    classDef orange fill:#FFEDD5,stroke:#EA580C,stroke-width:1.2px,color:#7C2D12
+    classDef cyan fill:#CFFAFE,stroke:#0891B2,stroke-width:1.2px,color:#164E63
+    classDef red fill:#FEE2E2,stroke:#DC2626,stroke-width:1.2px,color:#7F1D1D
+    class A,B blue
+    class D,H,K yellow
+    class C,E,F green
+    class G,I,L orange
+    class J,M red
+    class N cyan
 ```
 
-按键对照（Gamepad 1）：
+按键对照（Gamepad 1，竖着看）：
 
-| 操作 | 按键 |
-|---|---|
-| 移动 | 左摇杆 |
-| 旋转 | 右摇杆 X |
-| 场地中心 / 机器人中心 | `X` / `Y` |
-| Shooter 送料 | 右扳机 `RT`（> 0.1） |
-| Intake 斜坡 | 右保险杠 `RB` |
-| Servo 切 ACTIVE / 回 DEFAULT | `A` / `B` |
+**底盘**
+
+- 左摇杆 — 移动
+- 右摇杆 X — 旋转
+- `X` — 场地中心
+- `Y` — 机器人中心
+
+**机构**
+
+- 右扳机 `RT`（> 0.1）— Shooter 送料
+- 右保险杠 `RB` — Intake 斜坡
+- `A` — Servo 切 ACTIVE
+- `B` — Servo 回 DEFAULT
 
 几个点：
 
@@ -265,17 +294,20 @@ teamcode/
 
 `RED_1`、`RED_2` 必须直接放在 `teamcode/` 下。`RedAuto` 在车上运行时扫描的就是 `teamcode` 目录的直属子文件夹，多套一层就找不到了。
 
-## 硬件名
+## 硬件名（竖着看）
 
-| 名称 | 用途 |
-|---|---|
-| `FL / FR / BL / BR` | 四个底盘电机 |
-| `imu` | IMU，REV Hub，Logo 朝下 |
-| `limelight-dolphin` | Limelight 3A，pipeline 0 |
-| `ShooterRight / ShooterLeft` | Shooter 双电机 |
-| `Feeder` | 送料电机 |
-| `Intake` | 进料电机 |
-| `LeftServo / RightServo` | 两个舵机 |
+**底盘与传感**
+
+- `FL / FR / BL / BR` — 四个底盘电机
+- `imu` — IMU，REV Hub，Logo 朝下
+- `limelight-dolphin` — Limelight 3A，pipeline 0
+
+**机构**
+
+- `ShooterRight / ShooterLeft` — Shooter 双电机
+- `Feeder` — 送料电机
+- `Intake` — 进料电机
+- `LeftServo / RightServo` — 两个舵机
 
 ## 部署
 
