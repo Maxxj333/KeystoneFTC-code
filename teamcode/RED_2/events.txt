@@ -1,0 +1,28 @@
+PATH path_01
+IF_VISION 30-33 17.0
+
+  THEN
+    SEQ
+      Path path_02
+      SHOOT 3.0
+      PAR
+        PATH path_03
+        SERVO_ACTIVE
+      INTAKE 3.0
+      PAR
+        Path path_04
+        SERVO_DEFAULT
+      SHOOT 3.0
+
+  ELSE
+    SHOOT 0.0
+    # SEQ
+    #   PATH path_02
+    #   SHOOT 3.0
+    # If you meant "just go to a backup position and stop":
+    # PATH path_02
+    
+    
+    
+    
+    

@@ -1,0 +1,26 @@
+# Shoot, then path_01, then activate servo, then run intake during
+# path_02 + WAIT(3s), then branch on tags 34-37, then final shoot.
+
+SHOOT 3.0
+PATH path_01
+SERVO_ACTIVE
+
+RACE
+  SEQ
+    PATH path_02
+    WAIT 3.0
+  INTAKE
+
+IF_VISION 34-37
+  THEN
+    PAR
+      PATH path_03
+      SERVO_DEFAULT
+  ELSE
+    PAR
+      PATH path_04
+      SERVO_DEFAULT
+
+SHOOT 3.0
+
+

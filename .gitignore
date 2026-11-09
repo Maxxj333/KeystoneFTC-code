@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Java / Android build outputs
+*.class
+*.jar
+!gradle-wrapper.jar
+out/
+build/
+.gradle/
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# FTC / OnBot local files
+*.apk
